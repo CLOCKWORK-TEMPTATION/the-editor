@@ -774,6 +774,16 @@ export default function THEEditor() {
   const [showAdvancedAgents, setShowAdvancedAgents] = useState(false);
   const [showSmartClassification, setShowSmartClassification] = useState(false);
   const [uncertainLines, setUncertainLines] = useState<Array<{ id: string; text: string }>>([]);
+  
+  const [showAutoReviewDialog, setShowAutoReviewDialog] = useState(false);
+  const [autoReviewResults, setAutoReviewResults] = useState<Array<{
+    index: number;
+    original: string;
+    suggested: string;
+    confidence: number;
+    reason: string;
+    severity: 'low' | 'medium' | 'high';
+  }>>([]);
 
   const editorRef = useRef<HTMLDivElement>(null);
   const stickyHeaderRef = useRef<HTMLDivElement>(null);
@@ -788,6 +798,7 @@ export default function THEEditor() {
   const screenplayClassifier = useRef(new ScreenplayClassifier());
   const contextAwareClassifier = useRef(new ContextAwareClassifier());
   const adaptiveSystem = useRef(new AdaptiveClassificationSystem());
+  const autoReviewer = useRef(new AdvancedAutoReviewer());
 
   // نسخة محلية من getFormatStyles (الدالة المصدرة في نهاية الملف)
   // Memoized to prevent unnecessary re-computations
@@ -1174,6 +1185,53 @@ export default function THEEditor() {
     setActiveMenu(null);
   };
 
+  /**
+   * دالة تشغيل نظام المراجعة التلقائي (Auto-Reviewer v2)
+   * يقوم بفحص جميع التصنيفات وإرجاع التصحيحات المقترحة
+   */
+  const handleAutoReview = () => {
+    if (!editorRef.current) return;
+
+    // جمع النص من المحرر
+    const textContent = editorRef.current.innerText || '';
+
+    if (!textContent.trim()) {
+      alert('المحرر فارغ! اكتب شيئاً أولاً.');
+      return;
+    }
+
+    // تصنيف الأسطر باستخدام ScreenplayClassifier.classifyBatchDetailed
+    const results = ScreenplayClassifier.classifyBatchDetailed(textContent, true);
+
+    // تحويل النتائج إلى الصيغة المطلوبة للمراجع التلقائي
+    const classifications = results.map(r => {
+      // تحويل confidence من string إلى number
+      let confidenceNum = 70; // القيمة الافتراضية
+      if (r.confidence === 'high') confidenceNum = 90;
+      else if (r.confidence === 'medium') confidenceNum = 70;
+      else if (r.confidence === 'low') confidenceNum = 50;
+      
+      return {
+        text: r.text,
+        type: r.type,
+        confidence: confidenceNum
+      };
+    });
+
+    // تشغيل المراجع التلقائي
+    const corrections = autoReviewer.current.autoReview(classifications);
+
+    if (corrections.length === 0) {
+      alert('✓ لم يتم العثور على أي تصحيحات مقترحة! جميع التصنيفات تبدو صحيحة.');
+      return;
+    }
+
+    // عرض النتائج
+    setAutoReviewResults(corrections);
+    setShowAutoReviewDialog(true);
+    setActiveMenu(null);
+  };
+
 
   /* Optimized: Removed heavy DOM iteration on every render. Styles are handled by dynamic CSS injection.
   useEffect(() => {
@@ -1197,6 +1255,7 @@ export default function THEEditor() {
 
   // Track previous content to prevent unnecessary re-classification
   const prevContentRef = useRef<string>("");
+  const prevAutoReviewContentRef = useRef<string>("");
 
   // معالج التصنيف الذكي - يعمل تلقائياً عند تغيير المحتوى
   useEffect(() => {
@@ -1232,6 +1291,54 @@ export default function THEEditor() {
 
     return () => clearTimeout(timer);
   }, [htmlContent, showSmartClassification]);
+
+  // المراجعة التلقائية المستمرة (Auto-Reviewer v2) - يعمل في الخلفية بشكل دائم
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!editorRef.current) return;
+
+      const textContent = editorRef.current.innerText || '';
+
+      // تجاهل المحتوى الفارغ أو القصير جداً
+      if (!textContent.trim() || textContent.length < 20) return;
+
+      // Prevent infinite loop: check if content actually changed
+      if (prevAutoReviewContentRef.current === textContent) return;
+      prevAutoReviewContentRef.current = textContent;
+
+      // تصنيف الأسطر باستخدام ScreenplayClassifier.classifyBatchDetailed
+      const results = ScreenplayClassifier.classifyBatchDetailed(textContent, true);
+
+      // تحويل النتائج إلى الصيغة المطلوبة للمراجع التلقائي
+      const classifications = results.map(r => {
+        // تحويل confidence من string إلى number
+        let confidenceNum = 70; // القيمة الافتراضية
+        if (r.confidence === 'high') confidenceNum = 90;
+        else if (r.confidence === 'medium') confidenceNum = 70;
+        else if (r.confidence === 'low') confidenceNum = 50;
+        
+        return {
+          text: r.text,
+          type: r.type,
+          confidence: confidenceNum
+        };
+      });
+
+      // تشغيل المراجع التلقائي في الخلفية
+      const corrections = autoReviewer.current.autoReview(classifications);
+
+      // تحديث النتائج إذا وجدت تصحيحات (لكن لا نعرض الـ dialog تلقائياً)
+      if (corrections.length > 0) {
+        setAutoReviewResults(corrections);
+        // يمكن عرض إشعار صغير أو badge على زر الأدوات بدلاً من فتح Dialog
+        console.log(`🔍 Auto-Reviewer: تم العثور على ${corrections.length} تصحيح مقترح`);
+      } else {
+        setAutoReviewResults([]);
+      }
+    }, 2000); // تأخير 2 ثانية لتجنب التشغيل المتكرر
+
+    return () => clearTimeout(timer);
+  }, [htmlContent]);
 
   // Cleanup effect for memory leaks
   useEffect(() => {
@@ -1578,6 +1685,20 @@ export default function THEEditor() {
                       </div>
                       <span className="text-white/90 group-hover:text-white transition-colors">معالج التصنيف الذكي</span>
                     </button>
+                    <button
+                      onClick={handleAutoReview}
+                      className="w-full text-right px-3 py-2.5 hover:bg-white/10 rounded-xl transition-all duration-200 flex items-center gap-3 text-sm group relative"
+                    >
+                      <div className="p-1.5 rounded-lg bg-green-500/20 group-hover:bg-green-500/30 transition-colors">
+                        <Sparkles size={14} className="text-green-400" />
+                      </div>
+                      <span className="text-white/90 group-hover:text-white transition-colors flex-1">المراجعة التلقائية v2</span>
+                      {autoReviewResults.length > 0 && (
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center animate-pulse">
+                          {autoReviewResults.length}
+                        </span>
+                      )}
+                    </button>
                   </div>
                 </div>
               )}
@@ -1709,6 +1830,48 @@ export default function THEEditor() {
                 <Brain className="w-5 h-5 text-purple-400 group-hover:text-purple-300 transition-colors relative" />
               </button>
             </div>
+
+            {/* مؤشر المراجعة التلقائية المستمرة */}
+            <div className="mt-4 p-3 rounded-xl bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="relative">
+                  <Sparkles className="w-4 h-4 text-green-400" />
+                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
+                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full"></div>
+                </div>
+                <span className="text-xs font-bold text-green-300">المراجعة التلقائية نشطة</span>
+              </div>
+              {autoReviewResults.length > 0 ? (
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-white/70">تصحيحات مقترحة:</span>
+                    <span className="font-bold text-yellow-400">{autoReviewResults.length}</span>
+                  </div>
+                  <div className="flex gap-1 text-[10px]">
+                    <span className="px-2 py-0.5 bg-red-500/20 text-red-300 rounded">
+                      عالي: {autoReviewResults.filter(r => r.severity === 'high').length}
+                    </span>
+                    <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-300 rounded">
+                      متوسط: {autoReviewResults.filter(r => r.severity === 'medium').length}
+                    </span>
+                    <span className="px-2 py-0.5 bg-blue-500/20 text-blue-300 rounded">
+                      منخفض: {autoReviewResults.filter(r => r.severity === 'low').length}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setShowAutoReviewDialog(true)}
+                    className="w-full mt-2 px-2 py-1.5 bg-green-500/20 hover:bg-green-500/30 text-green-300 text-xs rounded transition-all"
+                  >
+                    عرض التفاصيل
+                  </button>
+                </div>
+              ) : (
+                <div className="text-xs text-white/50 flex items-center gap-1">
+                  <CheckCircle className="w-3 h-3 text-green-400" />
+                  <span>لا توجد تصحيحات مطلوبة</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -1789,6 +1952,94 @@ export default function THEEditor() {
           }}
           classifier={screenplayClassifier.current}
         />
+      )}
+
+      {showAutoReviewDialog && autoReviewResults.length > 0 && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 rounded-lg p-6 max-w-4xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                <CheckCircle className="w-6 h-6 text-green-500" />
+                نتائج المراجعة التلقائية (Auto-Reviewer v2)
+              </h2>
+              <button
+                onClick={() => setShowAutoReviewDialog(false)}
+                className="text-white/60 hover:text-white transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="mb-4 text-white/70 text-sm">
+              تم العثور على <strong className="text-yellow-400">{autoReviewResults.length}</strong> تصحيح مقترح
+            </div>
+
+            <div className="space-y-3">
+              {autoReviewResults.map((result, idx) => (
+                <div
+                  key={idx}
+                  className={`p-4 rounded-lg border ${
+                    result.severity === 'high'
+                      ? 'bg-red-900/20 border-red-500/30'
+                      : result.severity === 'medium'
+                      ? 'bg-yellow-900/20 border-yellow-500/30'
+                      : 'bg-blue-900/20 border-blue-500/30'
+                  }`}
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`px-2 py-1 text-xs font-bold rounded ${
+                          result.severity === 'high'
+                            ? 'bg-red-500 text-white'
+                            : result.severity === 'medium'
+                            ? 'bg-yellow-500 text-black'
+                            : 'bg-blue-500 text-white'
+                        }`}
+                      >
+                        {result.severity === 'high' ? 'عالي' : result.severity === 'medium' ? 'متوسط' : 'منخفض'}
+                      </span>
+                      <span className="text-white/60 text-sm">السطر #{result.index + 1}</span>
+                    </div>
+                    <span className="text-white/60 text-sm">{result.confidence.toFixed(0)}% ثقة</span>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-red-400 text-sm">الأصلي:</span>
+                      <code className="bg-black/30 px-2 py-1 rounded text-red-300">{result.original}</code>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-green-400 text-sm">المقترح:</span>
+                      <code className="bg-black/30 px-2 py-1 rounded text-green-300">{result.suggested}</code>
+                    </div>
+                    <div className="text-white/80 text-sm mt-2">
+                      <strong>السبب:</strong> {result.reason}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => {
+                  // تطبيق جميع التصحيحات (يمكن إضافة المنطق لاحقاً)
+                  alert('سيتم تطبيق جميع التصحيحات قريباً!');
+                }}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded transition-all font-bold"
+              >
+                ✓ تطبيق جميع التصحيحات
+              </button>
+              <button
+                onClick={() => setShowAutoReviewDialog(false)}
+                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-3 rounded transition-all"
+              >
+                إغلاق
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -7246,6 +7497,287 @@ export class AdaptiveClassificationSystem {
       return true;
     } catch (error) {
       console.error('فشل استيراد البيانات:', error);
+      return false;
+    }
+  }
+}
+
+/**
+ * نظام المراجعة التلقائي المتقدم (Auto-Reviewer v2)
+ * يقوم بفحص التصنيفات تلقائياً باستخدام قواعد ذكية ومعرفة مدمجة
+ */
+export class AdvancedAutoReviewer {
+  private knowledgeBase: Array<{
+    pattern: RegExp;
+    rules: {
+      confirmType: string;
+      rejectTypes: string[];
+      minConfidence: number;
+      explanation: string;
+    }[];
+  }> = [
+    {
+      pattern: /^بسم\s+الله\s+الرحمن\s+الرحيم/i,
+      rules: [{
+        confirmType: 'basmala',
+        rejectTypes: ['action', 'scene-header-3'],
+        minConfidence: 99,
+        explanation: 'البسملة يجب أن تكون باسم الله دائماً'
+      }]
+    },
+    {
+      pattern: /^مشهد\s*\d+.*[-–:].*(?:داخلي|خارجي|ليل|نهار)/i,
+      rules: [{
+        confirmType: 'scene-header-top-line',
+        rejectTypes: ['action', 'scene-header-3'],
+        minConfidence: 95,
+        explanation: 'رأس مشهد كامل يحتوي على جميع المعلومات'
+      }]
+    },
+    {
+      pattern: /^(?:قطع|انتقل|ذهاب|عودة|تلاشي|اختفاء|ظهور)\s*(?:إلى|من|في)/i,
+      rules: [{
+        confirmType: 'transition',
+        rejectTypes: ['action'],
+        minConfidence: 90,
+        explanation: 'كلمات انتقالية معروفة'
+      }]
+    },
+    {
+      pattern: /^\(.+\)$/,
+      rules: [{
+        confirmType: 'parenthetical',
+        rejectTypes: ['action', 'dialogue'],
+        minConfidence: 95,
+        explanation: 'نص بين قوسين هو ملاحظة إخراجية'
+      }]
+    },
+    {
+      pattern: /^(?:INT\.|EXT\.|INT\/EXT\.|داخلي|خارجي|داخلي\/خارجي)/i,
+      rules: [{
+        confirmType: 'scene-header-3',
+        rejectTypes: ['action'],
+        minConfidence: 92,
+        explanation: 'بداية رأس مشهد بمكان داخلي أو خارجي'
+      }]
+    }
+  ];
+  
+  /**
+   * مراجعة ذكية تلقائية مع قواعد متقدمة
+   * @param classifications قائمة التصنيفات المراد مراجعتها
+   * @returns قائمة التصحيحات المقترحة مرتبة حسب الأهمية
+   */
+  autoReview(
+    classifications: Array<{
+      text: string;
+      type: string;
+      confidence: number;
+    }>
+  ): Array<{
+    index: number;
+    original: string;
+    suggested: string;
+    confidence: number;
+    reason: string;
+    severity: 'low' | 'medium' | 'high';
+  }> {
+    const corrections: any[] = [];
+    
+    classifications.forEach((c, index) => {
+      // فحص القواعد المعروفة
+      for (const kb of this.knowledgeBase) {
+        if (kb.pattern.test(c.text)) {
+          for (const rule of kb.rules) {
+            if (rule.rejectTypes.includes(c.type)) {
+              corrections.push({
+                index,
+                original: c.type,
+                suggested: rule.confirmType,
+                confidence: Math.min(100, c.confidence + 15),
+                reason: rule.explanation,
+                severity: c.confidence < 60 ? 'high' : 'medium'
+              });
+              break;
+            }
+          }
+        }
+      }
+      
+      // فحص الانتقالات غير الصحيحة
+      if (index > 0) {
+        const prevType = classifications[index - 1].type;
+        const validNext = this.getValidNextTypes(prevType);
+        
+        if (!validNext.includes(c.type) && c.confidence < 80) {
+          corrections.push({
+            index,
+            original: c.type,
+            suggested: validNext[0],
+            confidence: c.confidence - 10,
+            reason: `الانتقال من ${prevType} إلى ${c.type} غير معتاد`,
+            severity: 'low'
+          });
+        }
+      }
+    });
+    
+    return corrections.sort((a, b) => {
+      const severityOrder = { high: 3, medium: 2, low: 1 };
+      return severityOrder[b.severity] - severityOrder[a.severity];
+    });
+  }
+  
+  /**
+   * الحصول على الأنواع الصالحة التالية بعد نوع معين
+   * @param type النوع الحالي
+   * @returns قائمة الأنواع الصالحة التالية
+   */
+  private getValidNextTypes(type: string): string[] {
+    const transitions: { [key: string]: string[] } = {
+      'basmala': ['scene-header-top-line', 'action'],
+      'scene-header-top-line': ['scene-header-3', 'action'],
+      'scene-header-3': ['action', 'blank'],
+      'action': ['character', 'transition', 'action', 'blank'],
+      'character': ['dialogue', 'parenthetical'],
+      'dialogue': ['parenthetical', 'action', 'character', 'blank'],
+      'parenthetical': ['dialogue', 'action', 'blank'],
+      'transition': ['scene-header-top-line', 'action'],
+      'blank': ['action', 'character', 'scene-header-top-line']
+    };
+    
+    return transitions[type] || ['action'];
+  }
+  
+  /**
+   * إضافة قاعدة جديدة إلى قاعدة المعرفة
+   * @param pattern النمط للتطابق
+   * @param rules القواعد المرتبطة بهذا النمط
+   */
+  addRule(
+    pattern: RegExp,
+    rules: {
+      confirmType: string;
+      rejectTypes: string[];
+      minConfidence: number;
+      explanation: string;
+    }[]
+  ): void {
+    this.knowledgeBase.push({ pattern, rules });
+  }
+  
+  /**
+   * إزالة قاعدة من قاعدة المعرفة
+   * @param pattern النمط المراد إزالته
+   * @returns true إذا تمت الإزالة بنجاح
+   */
+  removeRule(pattern: RegExp): boolean {
+    const initialLength = this.knowledgeBase.length;
+    this.knowledgeBase = this.knowledgeBase.filter(
+      kb => kb.pattern.source !== pattern.source
+    );
+    return this.knowledgeBase.length < initialLength;
+  }
+  
+  /**
+   * الحصول على عدد القواعد في قاعدة المعرفة
+   * @returns عدد القواعد المخزنة
+   */
+  getRuleCount(): number {
+    return this.knowledgeBase.length;
+  }
+  
+  /**
+   * مسح جميع القواعد (إعادة تعيين النظام)
+   */
+  reset(): void {
+    this.knowledgeBase = [];
+  }
+  
+  /**
+   * فحص سطر واحد فقط
+   * @param text نص السطر
+   * @param type النوع الحالي
+   * @param confidence الثقة الحالية
+   * @param previousType النوع السابق (اختياري)
+   * @returns التصحيح المقترح أو null إذا كان صحيحاً
+   */
+  reviewSingleLine(
+    text: string,
+    type: string,
+    confidence: number,
+    previousType?: string
+  ): {
+    suggested: string;
+    confidence: number;
+    reason: string;
+    severity: 'low' | 'medium' | 'high';
+  } | null {
+    // فحص القواعد المعروفة
+    for (const kb of this.knowledgeBase) {
+      if (kb.pattern.test(text)) {
+        for (const rule of kb.rules) {
+          if (rule.rejectTypes.includes(type)) {
+            return {
+              suggested: rule.confirmType,
+              confidence: Math.min(100, confidence + 15),
+              reason: rule.explanation,
+              severity: confidence < 60 ? 'high' : 'medium'
+            };
+          }
+        }
+      }
+    }
+    
+    // فحص الانتقالات إذا كان هناك نوع سابق
+    if (previousType) {
+      const validNext = this.getValidNextTypes(previousType);
+      if (!validNext.includes(type) && confidence < 80) {
+        return {
+          suggested: validNext[0],
+          confidence: confidence - 10,
+          reason: `الانتقال من ${previousType} إلى ${type} غير معتاد`,
+          severity: 'low'
+        };
+      }
+    }
+    
+    return null;
+  }
+  
+  /**
+   * تصدير قاعدة المعرفة كـ JSON
+   * @returns JSON string لقاعدة المعرفة
+   */
+  exportKnowledgeBase(): string {
+    return JSON.stringify({
+      rules: this.knowledgeBase.map(kb => ({
+        pattern: kb.pattern.source,
+        flags: kb.pattern.flags,
+        rules: kb.rules
+      })),
+      exportedAt: new Date().toISOString()
+    }, null, 2);
+  }
+  
+  /**
+   * استيراد قاعدة المعرفة من JSON
+   * @param jsonData JSON string تحتوي على القواعد
+   * @returns true إذا نجح الاستيراد
+   */
+  importKnowledgeBase(jsonData: string): boolean {
+    try {
+      const data = JSON.parse(jsonData);
+      if (data.rules && Array.isArray(data.rules)) {
+        this.knowledgeBase = data.rules.map((r: any) => ({
+          pattern: new RegExp(r.pattern, r.flags),
+          rules: r.rules
+        }));
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('فشل استيراد قاعدة المعرفة:', error);
       return false;
     }
   }
