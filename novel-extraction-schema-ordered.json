@@ -1,0 +1,964 @@
+{
+  "type": "object",
+  "properties": {
+    "novel_metadata": {
+      "type": "object",
+      "properties": {
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "dataset_version": { "type": "string" },
+            "schema_version": { "type": "string" },
+            "language": { "type": "string", "description": "ISO 639-1 code, e.g., 'ar'" },
+            "created_date": { "type": "string", "format": "date-time" },
+            "last_updated": { "type": "string", "format": "date-time" },
+            "data_source": { "type": "string" }
+          },
+          "propertyOrdering": [
+            "dataset_version",
+            "schema_version",
+            "language",
+            "created_date",
+            "last_updated",
+            "data_source"
+          ],
+          "required": ["dataset_version", "language", "created_date", "last_updated", "schema_version", "data_source"]
+        },
+        "basic_info": {
+          "type": "object",
+          "properties": {
+            "novel_id": { "type": "string", "description": "Internal UUID" },
+            "identifiers": {
+              "type": "object",
+              "properties": {
+                "isbn_10": { "type": "string" },
+                "isbn_13": { "type": "string" },
+                "oclc": { "type": "string" },
+                "doi": { "type": "string" },
+                "lccn": { "type": "string" }
+              },
+              "propertyOrdering": ["isbn_10", "isbn_13", "oclc", "doi", "lccn"]
+            },
+            "title": {
+              "type": "object",
+              "properties": {
+                "primary": { "type": "string" },
+                "original_title": { "type": "string", "description": "Title in original language if different" },
+                "alternative_titles": { "type": "array", "items": { "type": "string" } },
+                "subtitle": { "type": "string" },
+                "english_translation": { "type": "string" }
+              },
+              "propertyOrdering": ["primary", "original_title", "alternative_titles", "subtitle", "english_translation"],
+              "required": ["primary", "alternative_titles", "original_title", "english_translation"]
+            },
+            "author": {
+              "type": "object",
+              "properties": {
+                "full_name": { "type": "string" },
+                "native_name": { "type": "string" },
+                "first_name": { "type": "string" },
+                "last_name": { "type": "string" },
+                "pseudonyms": { "type": "array", "items": { "type": "string" } },
+                "nationality": { "type": "string" },
+                "gender": { "type": "string" },
+                "birth_date": { "type": "string" },
+                "death_date": { "type": "string" },
+                "biography_summary": { "type": "string" },
+                "literary_period": { "type": "string" }
+              },
+              "propertyOrdering": [
+                "full_name", "native_name", "first_name", "last_name", "pseudonyms",
+                "nationality", "gender", "birth_date", "death_date", "biography_summary", "literary_period"
+              ],
+              "required": ["full_name", "first_name", "last_name", "nationality"]
+            },
+            "publication": {
+              "type": "object",
+              "properties": {
+                "first_published_date": { "type": ["string", "null"] },
+                "publisher": { "type": "string" },
+                "place": { "type": "string" },
+                "original_language": { "type": "string" },
+                "copyright_status": { "type": "string", "enum": ["Public Domain", "Copyrighted", "Creative Commons", "Unknown"] },
+                "edition": { "type": "string" },
+                "format": { "type": "string", "enum": ["Hardcover", "Paperback", "E-book", "Audiobook", "Manuscript"] }
+              },
+              "propertyOrdering": ["first_published_date", "publisher", "place", "original_language", "copyright_status", "edition", "format"],
+              "required": ["publisher", "place", "original_language", "copyright_status", "format"]
+            }
+          },
+          "propertyOrdering": ["novel_id", "identifiers", "title", "author", "publication"],
+          "required": ["novel_id", "identifiers", "title", "author", "publication"]
+        },
+        "contributors": {
+          "type": "array",
+          "description": "Translators, Editors, Illustrators",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "role": { "type": "string", "enum": ["Translator", "Editor", "Illustrator", "Introduction Author"] },
+              "contribution_notes": { "type": "string" }
+            },
+            "propertyOrdering": ["name", "role", "contribution_notes"],
+            "required": ["name", "role"]
+          }
+        },
+        "annotated_full_text": {
+          "type": "object",
+          "properties": {
+            "full_text_available": { "type": "boolean" },
+            "encoding": { "type": "string", "default": "UTF-8" },
+            "chapters": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "chapter_number": { "type": "integer" },
+                  "title": { "type": "string" },
+                  "content": { "type": "string", "description": "Full chapter text" },
+                  "word_count": { "type": "integer" },
+                  "annotations": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "start_position": { "type": "integer" },
+                        "end_position": { "type": "integer" },
+                        "annotation_type": { 
+                          "type": "string", 
+                          "enum": ["Character", "Location", "Event", "Symbol", "Theme", "Literary Device", "Historical Reference", "Cultural Reference"]
+                        },
+                        "entity": { "type": "string" },
+                        "description": { "type": "string" }
+                      },
+                      "propertyOrdering": ["start_position", "end_position", "annotation_type", "entity", "description"]
+                    }
+                  },
+                  "key_events": { "type": "array", "items": { "type": "string" } },
+                  "characters_present": { "type": "array", "items": { "type": "string" } },
+                  "locations_mentioned": { "type": "array", "items": { "type": "string" } },
+                  "sentiment_score": { "type": "number", "minimum": -1, "maximum": 1 }
+                },
+                "propertyOrdering": [
+                  "chapter_number", "title", "content", "word_count", "annotations",
+                  "key_events", "characters_present", "locations_mentioned", "sentiment_score"
+                ],
+                "required": ["chapter_number", "title", "content"]
+              }
+            }
+          },
+          "propertyOrdering": ["full_text_available", "encoding", "chapters"],
+          "required": ["chapters"]
+        },
+        "dialogues": {
+          "type": "object",
+          "properties": {
+            "dialogue_density": { 
+              "type": "number", 
+              "description": "Percentage of text that is dialogue",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "conversations": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "dialogue_id": { "type": "string" },
+                  "chapter": { "type": "integer" },
+                  "scene_context": { "type": "string" },
+                  "speaker": { "type": "string" },
+                  "addressee": { "type": "string" },
+                  "text": { "type": "string" },
+                  "dialogue_type": { 
+                    "type": "string", 
+                    "enum": ["Direct Speech", "Indirect Speech", "Internal Monologue", "Stream of Consciousness"]
+                  },
+                  "emotion": { "type": "string" },
+                  "significance": { 
+                    "type": "string", 
+                    "enum": ["Plot-Critical", "Character Development", "Thematic", "Exposition", "Minor"]
+                  },
+                  "literary_devices": { 
+                    "type": "array", 
+                    "items": { "type": "string" },
+                    "description": "e.g., Irony, Metaphor, Foreshadowing"
+                  }
+                },
+                "propertyOrdering": [
+                  "dialogue_id", "chapter", "scene_context", "speaker", "addressee", "text",
+                  "dialogue_type", "emotion", "significance", "literary_devices"
+                ],
+                "required": ["dialogue_id", "chapter", "speaker", "text"]
+              }
+            },
+            "dialogue_patterns": {
+              "type": "object",
+              "properties": {
+                "most_talkative_character": { "type": "string" },
+                "dialogue_distribution": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "character": { "type": "string" },
+                      "dialogue_count": { "type": "integer" },
+                      "word_count": { "type": "integer" }
+                    },
+                    "propertyOrdering": ["character", "dialogue_count", "word_count"]
+                  }
+                }
+              },
+              "propertyOrdering": ["most_talkative_character", "dialogue_distribution"]
+            }
+          },
+          "propertyOrdering": ["dialogue_density", "conversations", "dialogue_patterns"],
+          "required": ["dialogue_density", "conversations"]
+        },
+        "literary_analysis": {
+          "type": "object",
+          "properties": {
+            "genre": {
+              "type": "object",
+              "properties": {
+                "primary": { "type": "string" },
+                "subgenres": { "type": "array", "items": { "type": "string" } },
+                "literary_movement": { "type": "string" }
+              },
+              "propertyOrdering": ["primary", "subgenres", "literary_movement"],
+              "required": ["primary", "subgenres"]
+            },
+            "target_audience": { "type": "string", "enum": ["Children", "Middle Grade", "Young Adult", "Adult", "Academic"] },
+            "series_info": {
+              "type": "object",
+              "properties": {
+                "is_part_of_series": { "type": "boolean" },
+                "series_name": { "type": "string" },
+                "series_order": { "type": ["number", "null"] },
+                "total_in_series": { "type": ["integer", "null"] },
+                "universe_name": { "type": "string" }
+              },
+              "propertyOrdering": ["is_part_of_series", "series_name", "series_order", "total_in_series", "universe_name"],
+              "required": ["is_part_of_series"]
+            },
+            "themes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "theme": { "type": "string" },
+                  "prominence": { "type": "string", "enum": ["Major", "Minor"] },
+                  "description": { "type": "string" }
+                },
+                "propertyOrdering": ["theme", "prominence", "description"],
+                "required": ["theme", "prominence"]
+              }
+            },
+            "symbols_motifs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "symbol": { "type": "string" },
+                  "interpretation": { "type": "string" }
+                },
+                "propertyOrdering": ["symbol", "interpretation"],
+                "required": ["symbol", "interpretation"]
+              }
+            },
+            "narrative_style": {
+              "type": "object",
+              "properties": {
+                "perspective": { "type": "string", "enum": ["First Person", "Second Person", "Third Person Limited", "Third Person Omniscient", "Multiple Perspectives"] },
+                "tense": { "type": "string", "enum": ["Past", "Present", "Future", "Mixed"] },
+                "tone": { "type": "array", "items": { "type": "string" } },
+                "narrator_reliability": { "type": "string", "enum": ["Reliable", "Unreliable", "Ambiguous"] },
+                "stream_of_consciousness": { "type": "boolean" },
+                "narrative_devices": { 
+                  "type": "array", 
+                  "items": { "type": "string" },
+                  "description": "e.g., Flashback, Foreshadowing, Frame Story, Epistolary"
+                }
+              },
+              "propertyOrdering": ["perspective", "tense", "tone", "narrator_reliability", "stream_of_consciousness", "narrative_devices"],
+              "required": ["perspective", "tense", "narrative_devices"]
+            }
+          },
+          "propertyOrdering": ["genre", "target_audience", "series_info", "themes", "symbols_motifs", "narrative_style"],
+          "required": ["genre", "themes", "narrative_style", "symbols_motifs", "target_audience"]
+        },
+        "text_analytics": {
+          "type": "object",
+          "properties": {
+            "metrics": {
+              "type": "object",
+              "properties": {
+                "total_characters": { "type": "integer" },
+                "total_words": { "type": "integer" },
+                "total_sentences": { "type": "integer" },
+                "total_paragraphs": { "type": "integer" },
+                "total_pages_standard": { "type": "integer" },
+                "total_tokens": { "type": "integer" },
+                "unique_words": { "type": "integer" },
+                "lexical_diversity_ratio": { "type": "number" }
+              },
+              "propertyOrdering": [
+                "total_characters", "total_words", "total_sentences", "total_paragraphs",
+                "total_pages_standard", "total_tokens", "unique_words", "lexical_diversity_ratio"
+              ],
+              "required": ["total_tokens", "unique_words"]
+            },
+            "readability": {
+              "type": "object",
+              "properties": {
+                "flesch_reading_ease": { "type": "number" },
+                "average_sentence_length": { "type": "number" },
+                "complex_words_percentage": { "type": "number" },
+                "language_register": { "type": "string", "description": "Formal, Informal, Archaic, Dialectal" }
+              },
+              "propertyOrdering": ["flesch_reading_ease", "average_sentence_length", "complex_words_percentage", "language_register"]
+            },
+            "sentiment_overview": {
+              "type": "object",
+              "properties": {
+                "overall_sentiment": { "type": "string", "enum": ["Positive", "Negative", "Neutral", "Mixed"] },
+                "polarity_score": { "type": "number", "minimum": -1, "maximum": 1 },
+                "emotional_arc": { "type": "string", "description": "e.g., Rags to riches, Tragedy, Cinderella curve" }
+              },
+              "propertyOrdering": ["overall_sentiment", "polarity_score", "emotional_arc"]
+            },
+            "structure": {
+              "type": "object",
+              "properties": {
+                "chapter_count": { "type": "integer" },
+                "parts_count": { "type": "integer" },
+                "average_words_per_chapter": { "type": "number" },
+                "has_prologue": { "type": "boolean" },
+                "has_epilogue": { "type": "boolean" }
+              },
+              "propertyOrdering": ["chapter_count", "parts_count", "average_words_per_chapter", "has_prologue", "has_epilogue"]
+            }
+          },
+          "propertyOrdering": ["metrics", "readability", "sentiment_overview", "structure"],
+          "required": ["metrics", "readability", "structure", "sentiment_overview"]
+        },
+        "linguistic_features": {
+          "type": "object",
+          "properties": {
+            "vocabulary_analysis": {
+              "type": "object",
+              "properties": {
+                "most_frequent_words": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "word": { "type": "string" },
+                      "frequency": { "type": "integer" },
+                      "part_of_speech": { "type": "string" }
+                    },
+                    "propertyOrdering": ["word", "frequency", "part_of_speech"]
+                  }
+                },
+                "unique_vocabulary_richness": { "type": "number", "description": "Type-Token Ratio" },
+                "archaic_words": { "type": "array", "items": { "type": "string" } },
+                "neologisms": { "type": "array", "items": { "type": "string" } },
+                "borrowed_words": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "word": { "type": "string" },
+                      "source_language": { "type": "string" }
+                    },
+                    "propertyOrdering": ["word", "source_language"]
+                  }
+                }
+              },
+              "propertyOrdering": ["most_frequent_words", "unique_vocabulary_richness", "archaic_words", "neologisms", "borrowed_words"]
+            },
+            "syntactic_patterns": {
+              "type": "object",
+              "properties": {
+                "average_sentence_complexity": { "type": "string", "enum": ["Simple", "Moderate", "Complex"] },
+                "sentence_types_distribution": {
+                  "type": "object",
+                  "properties": {
+                    "declarative": { "type": "number" },
+                    "interrogative": { "type": "number" },
+                    "imperative": { "type": "number" },
+                    "exclamatory": { "type": "number" }
+                  },
+                  "propertyOrdering": ["declarative", "interrogative", "imperative", "exclamatory"]
+                },
+                "passive_voice_usage": { "type": "number", "description": "Percentage" }
+              },
+              "propertyOrdering": ["average_sentence_complexity", "sentence_types_distribution", "passive_voice_usage"]
+            },
+            "rhetorical_devices": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "device": { "type": "string", "description": "e.g., Metaphor, Simile, Alliteration, Assonance" },
+                  "examples": { "type": "array", "items": { "type": "string" } },
+                  "frequency": { "type": "integer" }
+                },
+                "propertyOrdering": ["device", "examples", "frequency"]
+              }
+            },
+            "idiomatic_expressions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "expression": { "type": "string" },
+                  "meaning": { "type": "string" },
+                  "cultural_context": { "type": "string" }
+                },
+                "propertyOrdering": ["expression", "meaning", "cultural_context"]
+              }
+            },
+            "arabic_specific_features": {
+              "type": "object",
+              "properties": {
+                "classical_vs_modern": { "type": "string", "enum": ["Classical Arabic", "Modern Standard Arabic", "Mixed"] },
+                "diacritics_usage": { "type": "boolean" },
+                "morphological_complexity": { "type": "string" },
+                "poetic_prose": { "type": "boolean", "description": "Contains saj' or rhythmic prose" }
+              },
+              "propertyOrdering": ["classical_vs_modern", "diacritics_usage", "morphological_complexity", "poetic_prose"]
+            }
+          },
+          "propertyOrdering": ["vocabulary_analysis", "syntactic_patterns", "rhetorical_devices", "idiomatic_expressions", "arabic_specific_features"],
+          "required": ["vocabulary_analysis", "syntactic_patterns"]
+        },
+        "world_building": {
+          "type": "object",
+          "properties": {
+            "temporal_setting": {
+              "type": "object",
+              "properties": {
+                "time_period": { "type": "string" },
+                "start_year": { "type": ["string", "integer", "null"] },
+                "end_year": { "type": ["string", "integer", "null"] },
+                "is_futuristic": { "type": "boolean" },
+                "is_historical": { "type": "boolean" },
+                "pacing": { "type": "string", "enum": ["Fast", "Slow", "Variable"] },
+                "timeline_linearity": { "type": "string", "enum": ["Linear", "Non-linear", "Circular", "Fragmented"] }
+              },
+              "propertyOrdering": ["time_period", "start_year", "end_year", "is_futuristic", "is_historical", "pacing", "timeline_linearity"],
+              "required": ["time_period", "pacing"]
+            },
+            "geographical_setting": {
+              "type": "object",
+              "properties": {
+                "setting_type": { "type": "string", "enum": ["Real World", "Fantasy World", "Alternate History", "Space"] },
+                "locations": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": { "type": "string" },
+                      "type": { "type": "string", "description": "City, Country, Planet, Building" },
+                      "is_fictional": { "type": "boolean" },
+                      "significance": { "type": "string" },
+                      "map_coordinates": { "type": "string", "description": "Lat/Long if real" }
+                    },
+                    "propertyOrdering": ["name", "type", "is_fictional", "significance", "map_coordinates"],
+                    "required": ["name", "type"]
+                  }
+                },
+                "atmosphere": { "type": "array", "items": { "type": "string" } }
+              },
+              "propertyOrdering": ["setting_type", "locations", "atmosphere"],
+              "required": ["locations", "setting_type"]
+            }
+          },
+          "propertyOrdering": ["temporal_setting", "geographical_setting"],
+          "required": ["temporal_setting", "geographical_setting"]
+        },
+        "settings_detailed": {
+          "type": "object",
+          "properties": {
+            "locations_list": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "location_name": { "type": "string" },
+                  "location_type": { "type": "string", "enum": ["City", "Village", "Building", "Natural Landscape", "Country", "Region", "Fictional Place"] },
+                  "is_fictional": { "type": "boolean" },
+                  "description": { "type": "string" },
+                  "symbolic_meaning": { "type": "string" },
+                  "atmosphere": { "type": "array", "items": { "type": "string" } },
+                  "sensory_details": {
+                    "type": "object",
+                    "properties": {
+                      "visual": { "type": "array", "items": { "type": "string" } },
+                      "auditory": { "type": "array", "items": { "type": "string" } },
+                      "olfactory": { "type": "array", "items": { "type": "string" } },
+                      "tactile": { "type": "array", "items": { "type": "string" } }
+                    },
+                    "propertyOrdering": ["visual", "auditory", "olfactory", "tactile"]
+                  },
+                  "cultural_significance": { "type": "string" },
+                  "time_period_specific": { "type": "string" },
+                  "scenes_set_here": { "type": "array", "items": { "type": "string" } },
+                  "associated_characters": { "type": "array", "items": { "type": "string" } },
+                  "key_events": { "type": "array", "items": { "type": "string" } }
+                },
+                "propertyOrdering": [
+                  "location_name", "location_type", "is_fictional", "description", "symbolic_meaning",
+                  "atmosphere", "sensory_details", "cultural_significance", "time_period_specific",
+                  "scenes_set_here", "associated_characters", "key_events"
+                ],
+                "required": ["location_name", "location_type"]
+              }
+            },
+            "setting_progression": {
+              "type": "string",
+              "description": "How settings change throughout the narrative"
+            }
+          },
+          "propertyOrdering": ["locations_list", "setting_progression"],
+          "required": ["locations_list"]
+        },
+        "characters_detailed": {
+          "type": "object",
+          "properties": {
+            "character_count": { "type": "integer" },
+            "list": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "aliases": { "type": "array", "items": { "type": "string" } },
+                  "role": { "type": "string", "enum": ["Protagonist", "Antagonist", "Deuteragonist", "Supporting", "Minor"] },
+                  "archetype": { "type": "string", "description": "e.g., The Hero, The Mentor, The Jester" },
+                  "is_protagonist": { "type": "boolean" },
+                  "demographics": {
+                    "type": "object",
+                    "properties": {
+                      "gender": { "type": "string" },
+                      "age_range": { "type": "string" },
+                      "occupation": { "type": "string" },
+                      "social_class": { "type": "string" }
+                    },
+                    "propertyOrdering": ["gender", "age_range", "occupation", "social_class"]
+                  },
+                  "traits": {
+                    "type": "object",
+                    "properties": {
+                      "physical": { "type": "array", "items": { "type": "string" } },
+                      "personality": { "type": "array", "items": { "type": "string" } },
+                      "strengths": { "type": "array", "items": { "type": "string" } },
+                      "weaknesses": { "type": "array", "items": { "type": "string" } }
+                    },
+                    "propertyOrdering": ["physical", "personality", "strengths", "weaknesses"]
+                  },
+                  "character_arc": {
+                    "type": "object",
+                    "properties": {
+                      "type": { "type": "string", "enum": ["Flat", "Positive", "Negative"] },
+                      "goal": { "type": "string" },
+                      "motivation": { "type": "string" },
+                      "conflict": { "type": "string" }
+                    },
+                    "propertyOrdering": ["type", "goal", "motivation", "conflict"]
+                  },
+                  "key_quotes": { "type": "array", "items": { "type": "string" } }
+                },
+                "propertyOrdering": [
+                  "name", "aliases", "role", "archetype", "is_protagonist",
+                  "demographics", "traits", "character_arc", "key_quotes"
+                ],
+                "required": ["name", "role", "is_protagonist"]
+              }
+            },
+            "relationships_graph": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "source_character": { "type": "string" },
+                  "target_character": { "type": "string" },
+                  "relation_type": { "type": "string", "description": "Parent, Enemy, Lover, Friend" },
+                  "evolution": { "type": "string", "description": "How the relationship changes" }
+                },
+                "propertyOrdering": ["source_character", "target_character", "relation_type", "evolution"],
+                "required": ["source_character", "target_character", "relation_type"]
+              }
+            }
+          },
+          "propertyOrdering": ["character_count", "list", "relationships_graph"],
+          "required": ["character_count", "list", "relationships_graph"]
+        },
+        "plot_and_structure": {
+          "type": "object",
+          "properties": {
+            "plot_archetype": { "type": "string", "description": "e.g., Overcoming the Monster, Quest, Voyage and Return" },
+            "structure_model": { "type": "string", "description": "e.g., Freytag's Pyramid, Fichtean Curve, Kishōtenketsu" },
+            "conflicts": {
+               "type": "array",
+               "items": {
+                 "type": "object",
+                 "properties": {
+                   "type": { "type": "string", "enum": ["Man vs Man", "Man vs Nature", "Man vs Self", "Man vs Society", "Man vs Technology", "Man vs Fate"] },
+                   "description": { "type": "string" }
+                 },
+                 "propertyOrdering": ["type", "description"]
+               }
+            },
+            "plot_points": {
+              "type": "object",
+              "properties": {
+                "inciting_incident": { "type": "string" },
+                "rising_action_events": { "type": "array", "items": { "type": "string" } },
+                "climax": { "type": "string" },
+                "falling_action_events": { "type": "array", "items": { "type": "string" } },
+                "resolution": { "type": "string" },
+                "plot_twists": { "type": "array", "items": { "type": "string" } }
+              },
+              "propertyOrdering": ["inciting_incident", "rising_action_events", "climax", "falling_action_events", "resolution", "plot_twists"]
+            },
+            "subplots": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "resolution": { "type": "string" }
+                },
+                "propertyOrdering": ["name", "description", "resolution"]
+              }
+            }
+          },
+          "propertyOrdering": ["plot_archetype", "structure_model", "conflicts", "plot_points", "subplots"],
+          "required": ["plot_archetype", "structure_model", "plot_points", "conflicts"]
+        },
+        "conflict_development": {
+          "type": "object",
+          "properties": {
+            "primary_conflict": {
+              "type": "object",
+              "properties": {
+                "conflict_type": { "type": "string", "enum": ["Man vs Man", "Man vs Nature", "Man vs Self", "Man vs Society", "Man vs Technology", "Man vs Fate"] },
+                "parties_involved": { "type": "array", "items": { "type": "string" } },
+                "root_cause": { "type": "string" },
+                "stakes": { "type": "string", "description": "What is at risk" }
+              },
+              "propertyOrdering": ["conflict_type", "parties_involved", "root_cause", "stakes"],
+              "required": ["conflict_type", "parties_involved"]
+            },
+            "conflict_timeline": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "stage": { "type": "string", "enum": ["Introduction", "Escalation", "Peak", "De-escalation", "Resolution"] },
+                  "chapter_range": { "type": "string", "description": "e.g., Chapters 1-5" },
+                  "intensity_level": { "type": "integer", "minimum": 1, "maximum": 10 },
+                  "description": { "type": "string" },
+                  "key_turning_points": { "type": "array", "items": { "type": "string" } }
+                },
+                "propertyOrdering": ["stage", "chapter_range", "intensity_level", "description", "key_turning_points"],
+                "required": ["stage", "chapter_range", "intensity_level"]
+              }
+            },
+            "secondary_conflicts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "conflict_name": { "type": "string" },
+                  "conflict_type": { "type": "string" },
+                  "parties_involved": { "type": "array", "items": { "type": "string" } },
+                  "relation_to_primary": { "type": "string", "description": "How it connects to main conflict" },
+                  "resolution": { "type": "string" }
+                },
+                "propertyOrdering": ["conflict_name", "conflict_type", "parties_involved", "relation_to_primary", "resolution"]
+              }
+            },
+            "conflict_resolution_pattern": {
+              "type": "string",
+              "enum": ["Complete Resolution", "Partial Resolution", "Unresolved", "Bittersweet", "Tragic"]
+            }
+          },
+          "propertyOrdering": ["primary_conflict", "conflict_timeline", "secondary_conflicts", "conflict_resolution_pattern"],
+          "required": ["primary_conflict", "conflict_timeline"]
+        },
+        "emotional_development_analysis": {
+          "type": "object",
+          "properties": {
+            "overall_emotional_trajectory": {
+              "type": "object",
+              "properties": {
+                "opening_mood": { "type": "string" },
+                "closing_mood": { "type": "string" },
+                "trajectory_pattern": { "type": "string", "description": "e.g., Hopeful to Tragic, Dark to Redemptive" },
+                "emotional_peak": { "type": "string", "description": "Most emotionally intense moment" }
+              },
+              "propertyOrdering": ["opening_mood", "closing_mood", "trajectory_pattern", "emotional_peak"]
+            },
+            "character_emotional_arcs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "character_name": { "type": "string" },
+                  "initial_emotional_state": { "type": "string" },
+                  "final_emotional_state": { "type": "string" },
+                  "emotional_journey": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "chapter_range": { "type": "string" },
+                        "dominant_emotion": { "type": "string" },
+                        "intensity": { "type": "integer", "minimum": 1, "maximum": 10 },
+                        "trigger_event": { "type": "string" }
+                      },
+                      "propertyOrdering": ["chapter_range", "dominant_emotion", "intensity", "trigger_event"]
+                    }
+                  },
+                  "transformation_type": { "type": "string", "enum": ["Positive Growth", "Negative Decline", "Redemption", "Corruption", "Enlightenment", "Despair", "Stable"] }
+                },
+                "propertyOrdering": ["character_name", "initial_emotional_state", "final_emotional_state", "emotional_journey", "transformation_type"],
+                "required": ["character_name", "emotional_journey"]
+              }
+            },
+            "emotional_scenes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "chapter": { "type": "integer" },
+                  "scene_description": { "type": "string" },
+                  "primary_emotion": { "type": "string" },
+                  "emotional_intensity": { "type": "integer", "minimum": 1, "maximum": 10 },
+                  "characters_affected": { "type": "array", "items": { "type": "string" } },
+                  "reader_impact": { "type": "string", "description": "Expected emotional response from reader" }
+                },
+                "propertyOrdering": ["chapter", "scene_description", "primary_emotion", "emotional_intensity", "characters_affected", "reader_impact"]
+              }
+            },
+            "mood_progression_by_chapter": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "chapter": { "type": "integer" },
+                  "dominant_mood": { "type": "string" },
+                  "mood_score": { "type": "number", "minimum": -1, "maximum": 1, "description": "Negative to Positive scale" }
+                },
+                "propertyOrdering": ["chapter", "dominant_mood", "mood_score"]
+              }
+            }
+          },
+          "propertyOrdering": ["overall_emotional_trajectory", "character_emotional_arcs", "emotional_scenes", "mood_progression_by_chapter"],
+          "required": ["overall_emotional_trajectory", "character_emotional_arcs"]
+        },
+        "cultural_and_historical_context": {
+          "type": "object",
+          "properties": {
+            "societal_elements": {
+              "type": "object",
+              "properties": {
+                "religion_and_belief": { "type": "string" },
+                "politics": { "type": "string" },
+                "gender_roles": { "type": "string" },
+                "technology_level": { "type": "string" }
+              },
+              "propertyOrdering": ["religion_and_belief", "politics", "gender_roles", "technology_level"]
+            },
+            "historical_events_reflected": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                   "event": { "type": "string" },
+                   "accuracy": { "type": "string", "enum": ["Accurate", "Fictionalized", "Loose Inspiration"] }
+                },
+                "propertyOrdering": ["event", "accuracy"]
+              }
+            },
+            "linguistic_context": {
+              "type": "object",
+              "properties": {
+                "dialects_used": { "type": "array", "items": { "type": "string" } },
+                "sociolects": { "type": "string" },
+                "code_switching": { "type": "boolean" }
+              },
+              "propertyOrdering": ["dialects_used", "sociolects", "code_switching"]
+            }
+          },
+          "propertyOrdering": ["societal_elements", "historical_events_reflected", "linguistic_context"],
+          "required": ["societal_elements", "historical_events_reflected"]
+        },
+        "reception_and_impact": {
+          "type": "object",
+          "properties": {
+            "awards": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "year": { "type": "integer" },
+                  "status": { "type": "string", "enum": ["Winner", "Nominee", "Shortlist", "Longlist"] }
+                },
+                "propertyOrdering": ["name", "year", "status"]
+              }
+            },
+            "critical_reception": {
+              "type": "object",
+              "properties": {
+                "consensus": { "type": "string" },
+                "controversies": { "type": "array", "items": { "type": "string" } },
+                "academic_importance": { "type": "string" }
+              },
+              "propertyOrdering": ["consensus", "controversies", "academic_importance"]
+            },
+            "ratings": {
+              "type": "object",
+              "properties": {
+                "average_rating_score": { "type": "number" },
+                "source": { "type": "string", "description": "e.g., Goodreads, Amazon" }
+              },
+              "propertyOrdering": ["average_rating_score", "source"]
+            }
+          },
+          "propertyOrdering": ["awards", "critical_reception", "ratings"],
+          "required": ["awards", "critical_reception"]
+        },
+        "adaptations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": { "type": "string" },
+              "medium": { "type": "string", "enum": ["Film", "Television", "Stage Play", "Radio", "Video Game", "Graphic Novel"] },
+              "year": { "type": "integer" },
+              "director_creator": { "type": "string" },
+              "fidelity_to_source": { "type": "string", "enum": ["Faithful", "Loose", "Reimagining"] }
+            },
+            "propertyOrdering": ["title", "medium", "year", "director_creator", "fidelity_to_source"],
+            "required": ["title", "medium", "year"]
+          }
+        },
+        "extraction_metadata": {
+          "type": "object",
+          "properties": {
+            "extraction_date": { "type": "string", "format": "date-time" },
+            "method": { "type": "string", "enum": ["Automated", "Human-Curated", "Hybrid"] },
+            "model_version": { "type": "string" },
+            "confidence_score": { "type": "number", "minimum": 0, "maximum": 1 },
+            "pipeline_id": { "type": "string" }
+          },
+          "propertyOrdering": ["extraction_date", "method", "model_version", "confidence_score", "pipeline_id"],
+          "required": ["extraction_date", "method", "model_version"]
+        },
+        "data_quality": {
+          "type": "object",
+          "properties": {
+            "completeness_score": { "type": "number", "minimum": 0, "maximum": 1 },
+            "verification_status": { "type": "string", "enum": ["Unverified", "AI-Verified", "Human-Verified"] },
+            "missing_fields": { "type": "array", "items": { "type": "string" } }
+          },
+          "propertyOrdering": ["completeness_score", "verification_status", "missing_fields"],
+          "required": ["completeness_score", "verification_status"]
+        },
+        "related_resources": {
+          "type": "object",
+          "properties": {
+            "references": { "type": "array", "items": { "type": "string" } },
+            "similar_novels": { 
+              "type": "array", 
+              "items": { 
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string" },
+                  "author": { "type": "string" },
+                  "similarity_reason": { "type": "string" }
+                },
+                "propertyOrdering": ["title", "author", "similarity_reason"]
+              }
+            }
+          },
+          "propertyOrdering": ["references", "similar_novels"]
+        },
+        "tags_keywords": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "license_usage": {
+          "type": "object",
+          "properties": {
+            "license_type": { "type": "string" },
+            "usage_terms": { "type": "string" }
+          },
+          "propertyOrdering": ["license_type", "usage_terms"],
+          "required": ["license_type"]
+        }
+      },
+      "propertyOrdering": [
+        "metadata",
+        "basic_info",
+        "contributors",
+        "annotated_full_text",
+        "dialogues",
+        "literary_analysis",
+        "text_analytics",
+        "linguistic_features",
+        "world_building",
+        "settings_detailed",
+        "characters_detailed",
+        "plot_and_structure",
+        "conflict_development",
+        "emotional_development_analysis",
+        "cultural_and_historical_context",
+        "reception_and_impact",
+        "adaptations",
+        "extraction_metadata",
+        "data_quality",
+        "related_resources",
+        "tags_keywords",
+        "license_usage"
+      ],
+      "required": [
+        "metadata",
+        "basic_info",
+        "contributors",
+        "annotated_full_text",
+        "dialogues",
+        "literary_analysis",
+        "text_analytics",
+        "linguistic_features",
+        "world_building",
+        "settings_detailed",
+        "characters_detailed",
+        "plot_and_structure",
+        "conflict_development",
+        "emotional_development_analysis",
+        "cultural_and_historical_context",
+        "reception_and_impact",
+        "adaptations",
+        "extraction_metadata",
+        "data_quality",
+        "related_resources",
+        "tags_keywords",
+        "license_usage"
+      ]
+    }
+  },
+  "propertyOrdering": [
+    "novel_metadata"
+  ],
+  "required": [
+    "novel_metadata"
+  ]
+}
